@@ -3,13 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>パーツ管理システム Pro</title>
+    <title>パーツ管理システム Pro + Link</title>
     <style>
         :root {
             --primary-color: #0ea5e9;
             --bg-color: #f1f5f9;
             --card-bg: #ffffff;
             --accent-color: #6366f1;
+            --link-color: #f59e0b; /* オレンジ色 */
         }
 
         body {
@@ -22,7 +23,6 @@
 
         h1 { font-size: 1.4rem; text-align: center; color: var(--accent-color); margin-bottom: 20px; }
 
-        /* 入力フォーム */
         .form-container {
             background: var(--card-bg);
             padding: 18px;
@@ -55,9 +55,9 @@
             font-size: 1rem;
             font-weight: bold;
             margin-top: 5px;
+            cursor: pointer;
         }
 
-        /* 検索セクション */
         .search-section {
             background: #e2e8f0;
             padding: 15px;
@@ -74,8 +74,8 @@
         .search-controls select { width: 40%; background-color: #fff; }
         .search-controls input { width: 60%; }
 
-        /* リスト表示 */
         .parts-list { display: grid; gap: 12px; }
+        
         .part-item {
             background: white;
             padding: 15px;
@@ -85,6 +85,17 @@
             justify-content: space-between;
             align-items: center;
             border-left: 6px solid var(--primary-color);
+            transition: transform 0.1s;
+        }
+
+        /* リンクがある場合のスタイル */
+        .part-item.has-link {
+            border-left-color: var(--link-color);
+            cursor: pointer;
+        }
+        .part-item.has-link:active {
+            transform: scale(0.98);
+            background-color: #fffcf5;
         }
 
         .part-info .name { font-weight: 800; font-size: 1.1rem; display: block; margin-bottom: 4px; }
@@ -95,10 +106,12 @@
             background: #fee2e2;
             color: #ef4444;
             border: none;
-            padding: 8px 12px;
+            padding: 10px 14px;
             border-radius: 6px;
             font-size: 0.8rem;
             font-weight: 600;
+            cursor: pointer;
+            z-index: 10; /* クリックイベントの競合防止 */
         }
 
         .empty-msg { text-align: center; color: #94a3b8; margin-top: 30px; font-size: 0.9rem; }
@@ -106,7 +119,7 @@
 </head>
 <body>
 
-    <h1>📦 パーツ在庫管理</h1>
+    <h1>📦 パーツ在庫管理 Pro</h1>
 
     <div class="form-container">
         <div class="input-group">
@@ -120,6 +133,10 @@
         <div class="input-group">
             <label>値段</label>
             <input type="number" id="partPrice" placeholder="金額を入力">
+        </div>
+        <div class="input-group">
+            <label>リンク (任意)</label>
+            <input type="url" id="partLink" placeholder="https://example.com">
         </div>
         <button class="add-btn" onclick="addPart()">リストに追加保存</button>
     </div>
@@ -146,9 +163,10 @@
             const name = document.getElementById('partName').value.trim();
             const number = document.getElementById('partNumber').value.trim();
             const price = document.getElementById('partPrice').value.trim();
+            const link = document.getElementById('partLink').value.trim();
 
             if (!name || !number || !price) {
-                alert("すべての項目を入力してください");
+                alert("名称、番号、値段は必須項目です");
                 return;
             }
 
@@ -156,7 +174,8 @@
                 id: Date.now(),
                 name: name,
                 number: number,
-                price: Number(price)
+                price: Number(price),
+                link: link // リンクを保存
             };
 
             parts.push(newPart);
@@ -166,6 +185,7 @@
             document.getElementById('partName').value = '';
             document.getElementById('partNumber').value = '';
             document.getElementById('partPrice').value = '';
+            document.getElementById('partLink').value = '';
             
             displayParts();
         }
@@ -190,7 +210,6 @@
                 if (searchType === 'number') return numStr.includes(searchTerm);
                 if (searchType === 'price') return priceStr.includes(searchTerm);
                 
-                // 「すべて」の場合
                 return nameStr.includes(searchTerm) || numStr.includes(searchTerm) || priceStr.includes(searchTerm);
             });
 
@@ -201,10 +220,22 @@
 
             filteredParts.forEach(part => {
                 const item = document.createElement('div');
-                item.className = 'part-item';
+                // リンクがある場合はクラスを付与
+                item.className = `part-item ${part.link ? 'has-link' : ''}`;
+                
+                // リンクがある場合のクリックイベント
+                if (part.link) {
+                    item.onclick = (e) => {
+                        // 削除ボタンをクリックした時は遷移しない
+                        if (!e.target.classList.contains('delete-btn')) {
+                            window.open(part.link, '_blank');
+                        }
+                    };
+                }
+
                 item.innerHTML = `
                     <div class="part-info">
-                        <span class="name">${part.name}</span>
+                        <span class="name">${part.link ? '🔗 ' : ''}${part.name}</span>
                         <div class="details">
                             番号: ${part.number}<br>
                             価格: <span class="price-tag">¥${part.price.toLocaleString()}</span>
@@ -217,6 +248,8 @@
         }
 
         function deletePart(id) {
+            // イベントの伝播を止める（親要素のリンククリックを発動させない）
+            event.stopPropagation();
             if (confirm('このデータを削除しますか？')) {
                 parts = parts.filter(p => p.id !== id);
                 saveData();
