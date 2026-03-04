@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>パーツ管理システム Pro</title>
+    <style>
+        :root {
+            --primary-color: #0ea5e9;
+            --bg-color: #f1f5f9;
+            --card-bg: #ffffff;
+            --accent-color: #6366f1;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            padding: 15px;
+            color: #1e293b;
+        }
+
+        h1 { font-size: 1.4rem; text-align: center; color: var(--accent-color); margin-bottom: 20px; }
+
+        /* 入力フォーム */
+        .form-container {
+            background: var(--card-bg);
+            padding: 18px;
+            border-radius: 16px;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+            margin-bottom: 25px;
+        }
+
+        .input-group { margin-bottom: 12px; }
+        label { display: block; font-size: 0.8rem; margin-bottom: 4px; color: #64748b; font-weight: 600; }
+        input, select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            box-sizing: border-box;
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        input:focus, select:focus { border-color: var(--primary-color); }
+
+        .add-btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: bold;
+            margin-top: 5px;
+        }
+
+        /* 検索セクション */
+        .search-section {
+            background: #e2e8f0;
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+
+        .search-controls {
+            display: flex;
+            gap: 8px;
+            margin-top: 5px;
+        }
+
+        .search-controls select { width: 40%; background-color: #fff; }
+        .search-controls input { width: 60%; }
+
+        /* リスト表示 */
+        .parts-list { display: grid; gap: 12px; }
+        .part-item {
+            background: white;
+            padding: 15px;
+            border-radius: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-left: 6px solid var(--primary-color);
+        }
+
+        .part-info .name { font-weight: 800; font-size: 1.1rem; display: block; margin-bottom: 4px; }
+        .part-info .details { font-size: 0.85rem; color: #64748b; line-height: 1.4; }
+        .price-tag { color: #059669; font-weight: bold; }
+
+        .delete-btn {
+            background: #fee2e2;
+            color: #ef4444;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .empty-msg { text-align: center; color: #94a3b8; margin-top: 30px; font-size: 0.9rem; }
+    </style>
+</head>
+<body>
+
+    <h1>📦 パーツ在庫管理</h1>
+
+    <div class="form-container">
+        <div class="input-group">
+            <label>名称</label>
+            <input type="text" id="partName" placeholder="パーツ名を入力">
+        </div>
+        <div class="input-group">
+            <label>番号</label>
+            <input type="text" id="partNumber" placeholder="型番・管理番号">
+        </div>
+        <div class="input-group">
+            <label>値段</label>
+            <input type="number" id="partPrice" placeholder="金額を入力">
+        </div>
+        <button class="add-btn" onclick="addPart()">リストに追加保存</button>
+    </div>
+
+    <div class="search-section">
+        <label>🔍 絞り込み検索</label>
+        <div class="search-controls">
+            <select id="searchType" onchange="displayParts()">
+                <option value="all">すべて</option>
+                <option value="name">名称で探す</option>
+                <option value="number">番号で探す</option>
+                <option value="price">値段で探す</option>
+            </select>
+            <input type="text" id="searchInput" placeholder="検索ワード..." oninput="displayParts()">
+        </div>
+    </div>
+
+    <div id="partsList" class="parts-list"></div>
+
+    <script>
+        let parts = JSON.parse(localStorage.getItem('partsData')) || [];
+
+        function addPart() {
+            const name = document.getElementById('partName').value.trim();
+            const number = document.getElementById('partNumber').value.trim();
+            const price = document.getElementById('partPrice').value.trim();
+
+            if (!name || !number || !price) {
+                alert("すべての項目を入力してください");
+                return;
+            }
+
+            const newPart = {
+                id: Date.now(),
+                name: name,
+                number: number,
+                price: Number(price)
+            };
+
+            parts.push(newPart);
+            saveData();
+            
+            // 入力クリア
+            document.getElementById('partName').value = '';
+            document.getElementById('partNumber').value = '';
+            document.getElementById('partPrice').value = '';
+            
+            displayParts();
+        }
+
+        function saveData() {
+            localStorage.setItem('partsData', JSON.stringify(parts));
+        }
+
+        function displayParts() {
+            const listElement = document.getElementById('partsList');
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const searchType = document.getElementById('searchType').value;
+            
+            listElement.innerHTML = '';
+
+            const filteredParts = parts.filter(part => {
+                const nameStr = part.name.toLowerCase();
+                const numStr = part.number.toLowerCase();
+                const priceStr = part.price.toString();
+
+                if (searchType === 'name') return nameStr.includes(searchTerm);
+                if (searchType === 'number') return numStr.includes(searchTerm);
+                if (searchType === 'price') return priceStr.includes(searchTerm);
+                
+                // 「すべて」の場合
+                return nameStr.includes(searchTerm) || numStr.includes(searchTerm) || priceStr.includes(searchTerm);
+            });
+
+            if (filteredParts.length === 0) {
+                listElement.innerHTML = '<div class="empty-msg">該当するデータが見つかりません</div>';
+                return;
+            }
+
+            filteredParts.forEach(part => {
+                const item = document.createElement('div');
+                item.className = 'part-item';
+                item.innerHTML = `
+                    <div class="part-info">
+                        <span class="name">${part.name}</span>
+                        <div class="details">
+                            番号: ${part.number}<br>
+                            価格: <span class="price-tag">¥${part.price.toLocaleString()}</span>
+                        </div>
+                    </div>
+                    <button class="delete-btn" onclick="deletePart(${part.id})">削除</button>
+                `;
+                listElement.appendChild(item);
+            });
+        }
+
+        function deletePart(id) {
+            if (confirm('このデータを削除しますか？')) {
+                parts = parts.filter(p => p.id !== id);
+                saveData();
+                displayParts();
+            }
+        }
+
+        displayParts();
+    </script>
+</body>
+</html>
