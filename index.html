@@ -10,7 +10,7 @@
             --bg-color: #f1f5f9;
             --card-bg: #ffffff;
             --accent-color: #6366f1;
-            --link-color: #f59e0b; /* オレンジ色 */
+            --link-color: #f59e0b;
         }
 
         body {
@@ -29,6 +29,13 @@
             border-radius: 16px;
             box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
             margin-bottom: 25px;
+            border: 2px solid transparent;
+        }
+
+        /* 編集モード中のスタイル */
+        .form-container.edit-mode {
+            border-color: var(--link-color);
+            background-color: #fffbeb;
         }
 
         .input-group { margin-bottom: 12px; }
@@ -45,8 +52,10 @@
         }
         input:focus, select:focus { border-color: var(--primary-color); }
 
+        .btn-group { display: flex; gap: 8px; margin-top: 5px; }
+        
         .add-btn {
-            width: 100%;
+            flex: 2;
             padding: 14px;
             background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
             color: white;
@@ -54,8 +63,19 @@
             border-radius: 8px;
             font-size: 1rem;
             font-weight: bold;
-            margin-top: 5px;
             cursor: pointer;
+        }
+
+        .cancel-btn {
+            flex: 1;
+            padding: 14px;
+            background: #cbd5e1;
+            color: #475569;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            display: none; /* 通常時は非表示 */
         }
 
         .search-section {
@@ -88,30 +108,38 @@
             transition: transform 0.1s;
         }
 
-        /* リンクがある場合のスタイル */
         .part-item.has-link {
             border-left-color: var(--link-color);
             cursor: pointer;
         }
-        .part-item.has-link:active {
-            transform: scale(0.98);
-            background-color: #fffcf5;
-        }
 
+        .part-info { flex-grow: 1; }
         .part-info .name { font-weight: 800; font-size: 1.1rem; display: block; margin-bottom: 4px; }
         .part-info .details { font-size: 0.85rem; color: #64748b; line-height: 1.4; }
         .price-tag { color: #059669; font-weight: bold; }
+
+        .action-btns { display: flex; gap: 6px; margin-left: 10px; }
+
+        .edit-btn {
+            background: #e0e7ff;
+            color: #4338ca;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
 
         .delete-btn {
             background: #fee2e2;
             color: #ef4444;
             border: none;
-            padding: 10px 14px;
+            padding: 8px 12px;
             border-radius: 6px;
-            font-size: 0.8rem;
+            font-size: 0.75rem;
             font-weight: 600;
             cursor: pointer;
-            z-index: 10;
         }
 
         .empty-msg { text-align: center; color: #94a3b8; margin-top: 30px; font-size: 0.9rem; }
@@ -121,9 +149,10 @@
 
     <h1>📦 パーツ在庫管理 Pro</h1>
 
-    <div class="form-container">
+    <div class="form-container" id="formContainer">
+        <input type="hidden" id="editId" value="">
         <div class="input-group">
-            <label>名称</label>
+            <label id="formLabel">名称</label>
             <input type="text" id="partName" placeholder="パーツ名を入力">
         </div>
         <div class="input-group">
@@ -138,7 +167,10 @@
             <label>リンク (任意)</label>
             <input type="url" id="partLink" placeholder="https://example.com">
         </div>
-        <button class="add-btn" onclick="addPart()">リストに追加保存</button>
+        <div class="btn-group">
+            <button class="add-btn" id="submitBtn" onclick="processForm()">リストに追加保存</button>
+            <button class="cancel-btn" id="cancelBtn" onclick="resetForm()">キャンセル</button>
+        </div>
     </div>
 
     <div class="search-section">
@@ -159,49 +191,85 @@
     <script>
         let parts = JSON.parse(localStorage.getItem('partsData')) || [];
 
-        function addPart() {
+        function processForm() {
+            const editId = document.getElementById('editId').value;
             const name = document.getElementById('partName').value.trim();
             const number = document.getElementById('partNumber').value.trim();
             const priceValue = document.getElementById('partPrice').value.trim();
             const price = Number(priceValue);
             const link = document.getElementById('partLink').value.trim();
 
-            // 必須入力チェック
             if (!name || !number || !priceValue) {
                 alert("名称、番号、値段は必須項目です");
                 return;
             }
 
-            // 重複チェック (名称、番号、値段がすべて一致するか)
+            // 重複チェック (自分自身以外のデータと比較)
             const isDuplicate = parts.some(part => 
+                part.id.toString() !== editId && 
                 part.name === name && 
                 part.number === number && 
                 part.price === price
             );
 
             if (isDuplicate) {
-                alert("この「名称」「番号」「値段」の組み合わせは既に登録されています（重複）。");
+                alert("この「名称」「番号」「値段」の組み合わせは既に登録されています。");
                 return;
             }
 
-            const newPart = {
-                id: Date.now(),
-                name: name,
-                number: number,
-                price: price,
-                link: link
-            };
+            if (editId) {
+                // 更新処理
+                const index = parts.findIndex(p => p.id.toString() === editId);
+                if (index !== -1) {
+                    parts[index] = { ...parts[index], name, number, price, link };
+                }
+            } else {
+                // 新規追加
+                const newPart = {
+                    id: Date.now(),
+                    name: name,
+                    number: number,
+                    price: price,
+                    link: link
+                };
+                parts.push(newPart);
+            }
 
-            parts.push(newPart);
             saveData();
+            resetForm();
+            displayParts();
+        }
+
+        function startEdit(event, id) {
+            event.stopPropagation();
+            const part = parts.find(p => p.id === id);
+            if (!part) return;
+
+            document.getElementById('editId').value = part.id;
+            document.getElementById('partName').value = part.name;
+            document.getElementById('partNumber').value = part.number;
+            document.getElementById('partPrice').value = part.price;
+            document.getElementById('partLink').value = part.link;
+
+            // UIを編集モードに切り替え
+            document.getElementById('formContainer').classList.add('edit-mode');
+            document.getElementById('submitBtn').innerText = '変更を保存する';
+            document.getElementById('cancelBtn').style.display = 'block';
             
-            // 入力クリア
+            // 画面上部へスクロール
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function resetForm() {
+            document.getElementById('editId').value = '';
             document.getElementById('partName').value = '';
             document.getElementById('partNumber').value = '';
             document.getElementById('partPrice').value = '';
             document.getElementById('partLink').value = '';
             
-            displayParts();
+            document.getElementById('formContainer').classList.remove('edit-mode');
+            document.getElementById('submitBtn').innerText = 'リストに追加保存';
+            document.getElementById('cancelBtn').style.display = 'none';
         }
 
         function saveData() {
@@ -238,9 +306,8 @@
                 
                 if (part.link) {
                     item.onclick = (e) => {
-                        if (!e.target.classList.contains('delete-btn')) {
-                            window.open(part.link, '_blank');
-                        }
+                        const isBtn = e.target.classList.contains('edit-btn') || e.target.classList.contains('delete-btn');
+                        if (!isBtn) window.open(part.link, '_blank');
                     };
                 }
 
@@ -252,17 +319,20 @@
                             価格: <span class="price-tag">¥${part.price.toLocaleString()}</span>
                         </div>
                     </div>
-                    <button class="delete-btn" onclick="deletePart(event, ${part.id})">削除</button>
+                    <div class="action-btns">
+                        <button class="edit-btn" onclick="startEdit(event, ${part.id})">編集</button>
+                        <button class="delete-btn" onclick="deletePart(event, ${part.id})">削除</button>
+                    </div>
                 `;
                 listElement.appendChild(item);
             });
         }
 
         function deletePart(event, id) {
-            // イベントの伝播を止める
             event.stopPropagation();
             if (confirm('このデータを削除しますか？')) {
                 parts = parts.filter(p => p.id !== id);
+                if (document.getElementById('editId').value === id.toString()) resetForm();
                 saveData();
                 displayParts();
             }
