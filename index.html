@@ -147,13 +147,13 @@
 </head>
 <body>
 
-    <h1>📦 パーツ在庫管理 Pro</h1>
+    <h1>パーツ在庫管理</h1>
 
     <div class="form-container" id="formContainer">
         <input type="hidden" id="editId" value="">
         <div class="input-group">
             <label id="formLabel">名称</label>
-            <input type="text" id="partName" placeholder="パーツ名を入力">
+            <input type="text" id="partName" placeholder="パーツ名">
         </div>
         <div class="input-group">
             <label>番号</label>
@@ -161,14 +161,14 @@
         </div>
         <div class="input-group">
             <label>値段</label>
-            <input type="number" id="partPrice" placeholder="金額を入力">
+            <input type="number" id="partPrice" placeholder="金額">
         </div>
         <div class="input-group">
             <label>リンク (任意)</label>
             <input type="url" id="partLink" placeholder="https://example.com">
         </div>
         <div class="btn-group">
-            <button class="add-btn" id="submitBtn" onclick="processForm()">リストに追加保存</button>
+            <button class="add-btn" id="submitBtn" onclick="processForm()">リストに追加</button>
             <button class="cancel-btn" id="cancelBtn" onclick="resetForm()">キャンセル</button>
         </div>
     </div>
